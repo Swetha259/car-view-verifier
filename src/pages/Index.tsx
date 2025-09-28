@@ -20,6 +20,7 @@ interface UploadState {
   back: UploadedFile | null;
   left_side: UploadedFile | null;
   right_side: UploadedFile | null;
+  top: UploadedFile | null;
 }
 
 const Index = () => {
@@ -28,6 +29,7 @@ const Index = () => {
     back: null,
     left_side: null,
     right_side: null,
+    top: null,
   });
 
   const handleUpload = (viewType: keyof UploadState, file: File, validation: any) => {
@@ -38,7 +40,7 @@ const Index = () => {
   };
 
   const getUploadStats = () => {
-    const total = 4;
+    const total = 5;
     const uploaded = Object.values(uploads).filter(Boolean).length;
     const validated = Object.values(uploads).filter(u => u?.validation.isMatch).length;
     
@@ -46,7 +48,7 @@ const Index = () => {
   };
 
   const stats = getUploadStats();
-  const allValidated = stats.validated === 4;
+  const allValidated = stats.validated === 5;
   const hasUploads = stats.uploaded > 0;
 
   return (
@@ -69,11 +71,11 @@ const Index = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{stats.uploaded}/4</div>
+                  <div className="text-2xl font-bold">{stats.uploaded}/5</div>
                   <div className="text-sm text-primary-foreground/80">Uploaded</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold">{stats.validated}/4</div>
+                  <div className="text-2xl font-bold">{stats.validated}/5</div>
                   <div className="text-sm text-primary-foreground/80">Validated</div>
                 </div>
                 <div className="text-center">
@@ -112,7 +114,7 @@ const Index = () => {
                 Our AI system will automatically verify that each photo matches the expected view angle. 
                 Upload high-quality images showing clear views of the vehicle from each specified angle.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-success" />
                   <span>Front view: Show headlights, grille, and front bumper</span>
@@ -129,13 +131,17 @@ const Index = () => {
                   <CheckCircle className="w-4 h-4 text-success" />
                   <span>Right side: Complete right side profile of the vehicle</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                  <span>Top view: Overhead view showing roof, hood, and trunk</span>
+                </div>
               </div>
             </div>
           </div>
         </Card>
 
         {/* Upload Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <CarUploadZone
             viewType="front"
             viewLabel="Front View"
@@ -156,6 +162,13 @@ const Index = () => {
             viewLabel="Right Side"
             onUpload={(file, validation) => handleUpload('right_side', file, validation)}
           />
+          <div className="md:col-span-2 lg:col-span-1 mx-auto max-w-sm lg:max-w-none">
+            <CarUploadZone
+              viewType="top"
+              viewLabel="Top View"
+              onUpload={(file, validation) => handleUpload('top', file, validation)}
+            />
+          </div>
         </div>
 
         {/* Validation Summary */}
@@ -173,7 +186,8 @@ const Index = () => {
                   front: 'Front View',
                   back: 'Back View',
                   left_side: 'Left Side',
-                  right_side: 'Right Side'
+                  right_side: 'Right Side',
+                  top: 'Top View'
                 };
                 
                 return (

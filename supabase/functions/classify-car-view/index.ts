@@ -44,6 +44,7 @@ serve(async (req) => {
             - "back" - rear view showing taillights, rear bumper, license plate area
             - "left_side" - left side profile of the car
             - "right_side" - right side profile of the car
+            - "top" - top-down view of the car showing roof, hood, trunk
             
             If the image is unclear, damaged, or doesn't show a car, respond with "unknown".
             

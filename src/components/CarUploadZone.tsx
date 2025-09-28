@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CarUploadZoneProps {
-  viewType: 'front' | 'back' | 'left_side' | 'right_side';
+  viewType: 'front' | 'back' | 'left_side' | 'right_side' | 'top';
   viewLabel: string;
   onUpload: (file: File, result: ValidationResult) => void;
 }
