@@ -6,9 +6,10 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 
 interface CarUploadZoneProps {
-  viewType: 'front' | 'back' | 'left_side' | 'right_side' | 'top';
+  viewType: 'front' | 'back' | 'side' | 'top';
   viewLabel: string;
   onUpload: (file: File, result: ValidationResult) => void;
+  allowMultiple?: boolean;
 }
 
 interface ValidationResult {
@@ -22,33 +23,53 @@ export const CarUploadZone: React.FC<CarUploadZoneProps> = ({
   viewType,
   viewLabel,
   onUpload,
+  allowMultiple = false,
 }) => {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [validations, setValidations] = useState<ValidationResult[]>([]);
   const [isValidating, setIsValidating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (selectedFile: File) => {
-    if (!selectedFile.type.startsWith('image/')) {
-      return;
-    }
-
-    setFile(selectedFile);
+  const handleFileSelect = (selectedFiles: FileList | File[]) => {
+    const fileArray = Array.from(selectedFiles).filter(file => file.type.startsWith('image/'));
     
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      setPreview(result);
-      validateImage(result, selectedFile);
-    };
-    reader.readAsDataURL(selectedFile);
+    if (!allowMultiple) {
+      // Single file mode
+      const selectedFile = fileArray[0];
+      if (!selectedFile) return;
+      
+      setFiles([selectedFile]);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setPreviews([result]);
+        validateImage(result, selectedFile, 0);
+      };
+      reader.readAsDataURL(selectedFile);
+    } else {
+      // Multiple files mode
+      setFiles(fileArray);
+      
+      fileArray.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          setPreviews(prev => {
+            const newPreviews = [...prev];
+            newPreviews[index] = result;
+            return newPreviews;
+          });
+          validateImage(result, file, index);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
   };
 
-  const validateImage = async (imageDataUrl: string, file: File) => {
+  const validateImage = async (imageDataUrl: string, file: File, index: number) => {
     setIsValidating(true);
-    setValidation(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('classify-car-view', {
@@ -64,7 +85,11 @@ export const CarUploadZone: React.FC<CarUploadZoneProps> = ({
       }
 
       const result = data as ValidationResult;
-      setValidation(result);
+      setValidations(prev => {
+        const newValidations = [...prev];
+        newValidations[index] = result;
+        return newValidations;
+      });
       onUpload(file, result);
     } catch (error) {
       console.error('Error validating image:', error);
@@ -79,9 +104,9 @@ export const CarUploadZone: React.FC<CarUploadZoneProps> = ({
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      handleFileSelect(droppedFile);
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles.length > 0) {
+      handleFileSelect(droppedFiles);
     }
   };
 
@@ -89,25 +114,25 @@ export const CarUploadZone: React.FC<CarUploadZoneProps> = ({
     e.preventDefault();
   };
 
-  const getValidationIcon = () => {
+  const getValidationIcon = (index: number = 0) => {
     if (isValidating) return <AlertCircle className="w-5 h-5 text-warning animate-pulse" />;
-    if (!validation) return null;
+    if (!validations[index]) return null;
     
-    if (validation.isMatch) {
+    if (validations[index].isMatch) {
       return <CheckCircle className="w-5 h-5 text-success" />;
     } else {
       return <XCircle className="w-5 h-5 text-destructive" />;
     }
   };
 
-  const getValidationMessage = () => {
+  const getValidationMessage = (index: number = 0) => {
     if (isValidating) return "Validating image...";
-    if (!validation) return null;
+    if (!validations[index]) return null;
     
-    if (validation.isMatch) {
+    if (validations[index].isMatch) {
       return `✅ Perfect match! ${viewLabel} view detected`;
     } else {
-      return `❌ Mismatch: Expected ${viewLabel}, detected ${validation.detectedView.replace('_', ' ')} view`;
+      return `❌ Mismatch: Expected ${viewLabel}, detected ${validations[index].detectedView.replace('_', ' ')} view`;
     }
   };
 
@@ -115,8 +140,9 @@ export const CarUploadZone: React.FC<CarUploadZoneProps> = ({
     <Card className="relative overflow-hidden bg-gradient-card shadow-card hover:shadow-elegant transition-smooth">
       <div 
         className={cn(
-          "aspect-square relative cursor-pointer transition-smooth",
-          !file && "border-2 border-dashed border-border hover:border-primary/50"
+          allowMultiple ? "min-h-48" : "aspect-square",
+          "relative cursor-pointer transition-smooth",
+          files.length === 0 && "border-2 border-dashed border-border hover:border-primary/50"
         )}
         onClick={handleClick}
         onDrop={handleDrop}
@@ -126,26 +152,59 @@ export const CarUploadZone: React.FC<CarUploadZoneProps> = ({
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple={allowMultiple}
           onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileSelect(file);
+            const files = e.target.files;
+            if (files && files.length > 0) handleFileSelect(files);
           }}
           className="hidden"
         />
 
-        {preview ? (
-          <div className="relative w-full h-full">
-            <img
-              src={preview}
-              alt={`${viewLabel} view`}
-              className="w-full h-full object-cover rounded-lg"
-            />
-            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-smooth flex items-center justify-center">
-              <div className="text-white text-center">
-                <Camera className="w-8 h-8 mx-auto mb-2" />
-                <p className="text-sm font-medium">Change Image</p>
+        {files.length > 0 ? (
+          <div className={cn(
+            "relative w-full h-full",
+            allowMultiple ? "grid grid-cols-2 gap-2 p-2" : ""
+          )}>
+            {files.map((file, index) => (
+              <div key={index} className="relative group">
+                <img
+                  src={previews[index]}
+                  alt={`${viewLabel} view ${index + 1}`}
+                  className={cn(
+                    "object-cover rounded-lg",
+                    allowMultiple ? "w-full h-32" : "w-full h-full"
+                  )}
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-smooth flex items-center justify-center">
+                  <div className="text-white text-center">
+                    <Camera className="w-6 h-6 mx-auto mb-1" />
+                    <p className="text-xs font-medium">
+                      {allowMultiple ? `Image ${index + 1}` : 'Change Image'}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Individual validation status for multiple images */}
+                {allowMultiple && validations[index] && (
+                  <div className="absolute top-1 right-1">
+                    {validations[index].isMatch ? (
+                      <CheckCircle className="w-4 h-4 text-success bg-white rounded-full" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-destructive bg-white rounded-full" />
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
+            ))}
+            
+            {allowMultiple && files.length < 4 && (
+              <div className="border-2 border-dashed border-border rounded-lg flex items-center justify-center h-32">
+                <div className="text-center text-muted-foreground">
+                  <Upload className="w-6 h-6 mx-auto mb-1" />
+                  <p className="text-xs">Add more</p>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-6 text-center">
@@ -154,33 +213,43 @@ export const CarUploadZone: React.FC<CarUploadZoneProps> = ({
             </div>
             <h3 className="font-semibold text-lg mb-2">{viewLabel}</h3>
             <p className="text-muted-foreground text-sm mb-4">
-              Drop your {viewLabel.toLowerCase()} view image here or click to browse
+              Drop your {viewLabel.toLowerCase()} view {allowMultiple ? 'images' : 'image'} here or click to browse
+              {allowMultiple && <span className="block text-xs mt-1">You can upload multiple images</span>}
             </p>
             <Button variant="upload" size="sm">
               <Camera className="w-4 h-4" />
-              Select Image
+              Select {allowMultiple ? 'Images' : 'Image'}
             </Button>
           </div>
         )}
 
         {/* Validation Status */}
-        {(validation || isValidating) && (
+        {!allowMultiple && (validations[0] || isValidating) && (
           <div className="absolute bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm p-3 border-t">
             <div className="flex items-center gap-2">
-              {getValidationIcon()}
+              {getValidationIcon(0)}
               <p className={cn(
                 "text-sm font-medium",
-                validation?.isMatch ? "text-success" : "text-destructive",
+                validations[0]?.isMatch ? "text-success" : "text-destructive",
                 isValidating && "text-warning"
               )}>
-                {getValidationMessage()}
+                {getValidationMessage(0)}
               </p>
             </div>
-            {validation && (
+            {validations[0] && (
               <p className="text-xs text-muted-foreground mt-1">
-                Confidence: {Math.round(validation.confidence * 100)}%
+                Confidence: {Math.round(validations[0].confidence * 100)}%
               </p>
             )}
+          </div>
+        )}
+        
+        {/* Multiple images summary */}
+        {allowMultiple && validations.length > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm p-3 border-t">
+            <p className="text-sm font-medium">
+              {validations.filter(v => v.isMatch).length}/{validations.length} images validated
+            </p>
           </div>
         )}
       </div>
