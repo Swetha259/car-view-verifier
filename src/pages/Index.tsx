@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CheckCircle, AlertTriangle, Car, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import fordLogo from '@/assets/ford-logo.jpg';
 
 interface UploadedFile {
   file: File;
@@ -80,8 +81,8 @@ const Index = () => {
       <div className="bg-gradient-primary text-primary-foreground">
         <div className="container mx-auto px-6 py-8">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-              <Car className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center p-1">
+              <img src={fordLogo} alt="Ford Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-3xl font-bold">Ford Vehicle Photo Validation</h1>
@@ -160,7 +161,7 @@ const Index = () => {
         </Card>
 
         {/* Upload Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <CarUploadZone
             viewType="front"
             viewLabel="Front View"
@@ -177,13 +178,11 @@ const Index = () => {
             allowMultiple={true}
             onUpload={(file, validation) => handleUpload('side', file, validation)}
           />
-          <div className="md:col-span-2 lg:col-span-1 mx-auto max-w-sm lg:max-w-none">
-            <CarUploadZone
-              viewType="top"
-              viewLabel="Top View"
-              onUpload={(file, validation) => handleUpload('top', file, validation)}
-            />
-          </div>
+          <CarUploadZone
+            viewType="top"
+            viewLabel="Top View"
+            onUpload={(file, validation) => handleUpload('top', file, validation)}
+          />
         </div>
 
         {/* Validation Summary */}
