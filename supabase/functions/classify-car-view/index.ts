@@ -21,20 +21,20 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
     }
 
-    // Use Lovable AI to classify the car view
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // First, validate the view type
+    const validateResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -70,17 +70,90 @@ serve(async (req) => {
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
+    if (!validateResponse.ok) {
+      const errorText = await validateResponse.text();
+      console.error('OpenAI validation error:', validateResponse.status, errorText);
       return new Response(
-        JSON.stringify({ error: 'AI classification failed' }),
+        JSON.stringify({ error: 'Image validation failed' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const data = await response.json();
-    const detectedView = data.choices[0]?.message?.content?.trim().toLowerCase();
+    const validateData = await validateResponse.json();
+    const detectedView = validateData.choices[0]?.message?.content?.trim().toLowerCase();
+    
+    // Then, perform detailed image analysis
+    const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert automotive analyst. Analyze the car image and provide detailed information.
+            
+            Respond in the following JSON format:
+            {
+              "make": "Car manufacturer",
+              "model": "Car model (if identifiable)",
+              "color": "Primary color",
+              "condition": "Overall condition (Excellent/Good/Fair/Poor)",
+              "damage": "Any visible damage or issues",
+              "features": "Notable features or characteristics"
+            }
+            
+            If information cannot be determined, use "Unknown" or "Not visible".`
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Analyze this ${expectedView} view of a car and provide detailed information.`
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageBase64
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 500
+      }),
+    });
+
+    if (!analysisResponse.ok) {
+      const errorText = await analysisResponse.text();
+      console.error('OpenAI analysis error:', analysisResponse.status, errorText);
+      return new Response(
+        JSON.stringify({ error: 'Image analysis failed' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const analysisData = await analysisResponse.json();
+    const analysisContent = analysisData.choices[0]?.message?.content?.trim();
+    
+    let analysisResult;
+    try {
+      analysisResult = JSON.parse(analysisContent);
+    } catch (e) {
+      console.error('Failed to parse analysis JSON:', analysisContent);
+      analysisResult = {
+        make: "Unknown",
+        model: "Unknown",
+        color: "Unknown",
+        condition: "Unknown",
+        damage: "Analysis failed",
+        features: "Could not analyze"
+      };
+    }
     
     console.log(`Expected: ${expectedView}, Detected: ${detectedView}`);
     
@@ -92,7 +165,8 @@ serve(async (req) => {
         detectedView,
         expectedView: expectedView.toLowerCase(),
         isMatch,
-        confidence: detectedView === 'unknown' ? 0 : (isMatch ? 0.95 : 0.85)
+        confidence: detectedView === 'unknown' ? 0 : (isMatch ? 0.95 : 0.85),
+        analysis: analysisResult
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

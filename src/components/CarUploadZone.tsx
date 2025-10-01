@@ -17,6 +17,14 @@ interface ValidationResult {
   expectedView: string;
   isMatch: boolean;
   confidence: number;
+  analysis?: {
+    make: string;
+    model: string;
+    color: string;
+    condition: string;
+    damage: string;
+    features: string;
+  };
 }
 
 export const CarUploadZone: React.FC<CarUploadZoneProps> = ({

@@ -5,6 +5,14 @@ import { Card } from '@/components/ui/card';
 import { CheckCircle, AlertTriangle, Car, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import fordLogo from '@/assets/ford-logo.jpg';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface UploadedFile {
   file: File;
@@ -13,6 +21,14 @@ interface UploadedFile {
     expectedView: string;
     isMatch: boolean;
     confidence: number;
+    analysis?: {
+      make: string;
+      model: string;
+      color: string;
+      condition: string;
+      damage: string;
+      features: string;
+    };
   };
 }
 
@@ -275,6 +291,144 @@ const Index = () => {
                 </Button>
               </div>
             )}
+          </Card>
+        )}
+
+        {/* Image Analysis Table */}
+        {hasUploads && (
+          <Card className="mt-8 p-6 bg-gradient-card shadow-card">
+            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+              <Car className="w-5 h-5" />
+              Detailed Image Analysis
+            </h3>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[100px]">View Type</TableHead>
+                    <TableHead className="w-[80px]">Image</TableHead>
+                    <TableHead>Make</TableHead>
+                    <TableHead>Model</TableHead>
+                    <TableHead>Color</TableHead>
+                    <TableHead>Condition</TableHead>
+                    <TableHead>Damage</TableHead>
+                    <TableHead className="min-w-[200px]">Features</TableHead>
+                    <TableHead className="w-[100px]">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(uploads).map(([viewType, upload]) => {
+                    if (!upload) return null;
+
+                    const viewLabels = {
+                      front: 'Front',
+                      back: 'Back',
+                      side: 'Side',
+                      top: 'Top'
+                    };
+
+                    if (viewType === 'side' && Array.isArray(upload)) {
+                      return upload.map((sideUpload, idx) => (
+                        <TableRow key={`${viewType}-${idx}`}>
+                          <TableCell className="font-medium">
+                            {viewLabels[viewType as keyof typeof viewLabels]} #{idx + 1}
+                          </TableCell>
+                          <TableCell>
+                            <img
+                              src={URL.createObjectURL(sideUpload.file)}
+                              alt={`${viewType} view`}
+                              className="w-16 h-16 object-cover rounded border"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {sideUpload.validation.analysis?.make || "Analyzing..."}
+                          </TableCell>
+                          <TableCell>
+                            {sideUpload.validation.analysis?.model || "Analyzing..."}
+                          </TableCell>
+                          <TableCell>
+                            {sideUpload.validation.analysis?.color || "Analyzing..."}
+                          </TableCell>
+                          <TableCell>
+                            {sideUpload.validation.analysis?.condition || "Analyzing..."}
+                          </TableCell>
+                          <TableCell>
+                            {sideUpload.validation.analysis?.damage || "Analyzing..."}
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            <div className="line-clamp-2">
+                              {sideUpload.validation.analysis?.features || "Analyzing..."}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {sideUpload.validation.isMatch ? (
+                              <span className="inline-flex items-center gap-1 text-success font-medium">
+                                <CheckCircle className="w-4 h-4" />
+                                Valid
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-destructive font-medium">
+                                <AlertTriangle className="w-4 h-4" />
+                                Invalid
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ));
+                    }
+
+                    const singleUpload = upload as UploadedFile;
+                    return (
+                      <TableRow key={viewType}>
+                        <TableCell className="font-medium">
+                          {viewLabels[viewType as keyof typeof viewLabels]}
+                        </TableCell>
+                        <TableCell>
+                          <img
+                            src={URL.createObjectURL(singleUpload.file)}
+                            alt={`${viewType} view`}
+                            className="w-16 h-16 object-cover rounded border"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {singleUpload.validation.analysis?.make || "Analyzing..."}
+                        </TableCell>
+                        <TableCell>
+                          {singleUpload.validation.analysis?.model || "Analyzing..."}
+                        </TableCell>
+                        <TableCell>
+                          {singleUpload.validation.analysis?.color || "Analyzing..."}
+                        </TableCell>
+                        <TableCell>
+                          {singleUpload.validation.analysis?.condition || "Analyzing..."}
+                        </TableCell>
+                        <TableCell>
+                          {singleUpload.validation.analysis?.damage || "Analyzing..."}
+                        </TableCell>
+                        <TableCell className="max-w-xs">
+                          <div className="line-clamp-2">
+                            {singleUpload.validation.analysis?.features || "Analyzing..."}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {singleUpload.validation.isMatch ? (
+                            <span className="inline-flex items-center gap-1 text-success font-medium">
+                              <CheckCircle className="w-4 h-4" />
+                              Valid
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-destructive font-medium">
+                              <AlertTriangle className="w-4 h-4" />
+                              Invalid
+                            </span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </Card>
         )}
       </div>
