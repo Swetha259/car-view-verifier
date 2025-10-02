@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CarUploadZone } from '@/components/CarUploadZone';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CheckCircle, AlertTriangle, Car, Sparkles } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import fordLogo from '@/assets/ford-logo.jpg';
 import {
@@ -208,130 +208,34 @@ const Index = () => {
               <AlertTriangle className="w-5 h-5 text-warning" />
               Validation Summary
             </h3>
-            <div className="space-y-3">
-              {Object.entries(uploads).map(([viewType, upload]) => {
-                if (!upload) return null;
-                
-                const viewLabels = {
-                  front: 'Front View',
-                  back: 'Back View',
-                  side: 'Side View',
-                  top: 'Top View'
-                };
-                
-                if (viewType === 'side' && Array.isArray(upload)) {
-                  return (
-                    <div key={viewType} className="space-y-2">
-                      <p className="font-medium">{viewLabels[viewType as keyof typeof viewLabels]}</p>
-                      {upload.map((sideUpload, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50 ml-4">
-                          <div className="flex items-center gap-3">
-                            {sideUpload.validation.isMatch ? (
-                              <CheckCircle className="w-5 h-5 text-success" />
-                            ) : (
-                              <AlertTriangle className="w-5 h-5 text-destructive" />
-                            )}
-                            <div>
-                              <p className="font-medium">Side Image {index + 1}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {sideUpload.validation.isMatch 
-                                  ? `✅ Correct side view detected`
-                                  : `❌ Expected side view, got ${sideUpload.validation.detectedView.replace('_', ' ')}`
-                                }
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium">
-                              {Math.round(sideUpload.validation.confidence * 100)}% confidence
-                            </p>
-                            <p className="text-xs text-muted-foreground">{sideUpload.file.name}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-                
-                const singleUpload = upload as UploadedFile;
-                return (
-                  <div key={viewType} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div className="flex items-center gap-3">
-                      {singleUpload.validation.isMatch ? (
-                        <CheckCircle className="w-5 h-5 text-success" />
-                      ) : (
-                        <AlertTriangle className="w-5 h-5 text-destructive" />
-                      )}
-                      <div>
-                        <p className="font-medium">{viewLabels[viewType as keyof typeof viewLabels]}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {singleUpload.validation.isMatch 
-                            ? `✅ Correct ${viewType.replace('_', ' ')} view detected`
-                            : `❌ Expected ${viewType.replace('_', ' ')}, got ${singleUpload.validation.detectedView.replace('_', ' ')}`
-                          }
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">
-                        {Math.round(singleUpload.validation.confidence * 100)}% confidence
-                      </p>
-                      <p className="text-xs text-muted-foreground">{singleUpload.file.name}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            
-            {allValidated && (
-              <div className="mt-6 pt-4 border-t border-border">
-                <Button size="lg" className="w-full">
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  Submit All Photos
-                </Button>
-              </div>
-            )}
-          </Card>
-        )}
-
-        {/* Image Analysis Table */}
-        {hasUploads && (
-          <Card className="mt-8 p-6 bg-gradient-card shadow-card">
-            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Car className="w-5 h-5" />
-              Detailed Image Analysis
-            </h3>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px]">View Type</TableHead>
-                    <TableHead className="w-[80px]">Image</TableHead>
-                    <TableHead>Make</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead>Color</TableHead>
-                    <TableHead>Condition</TableHead>
-                    <TableHead>Damage</TableHead>
-                    <TableHead className="min-w-[200px]">Features</TableHead>
-                    <TableHead className="w-[100px]">Status</TableHead>
+                    <TableHead className="w-[120px]">View Type</TableHead>
+                    <TableHead className="w-[100px]">Image</TableHead>
+                    <TableHead>Filename</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Detected View</TableHead>
+                    <TableHead className="w-[100px] text-right">Confidence</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {Object.entries(uploads).map(([viewType, upload]) => {
                     if (!upload) return null;
-
+                    
                     const viewLabels = {
-                      front: 'Front',
-                      back: 'Back',
-                      side: 'Side',
-                      top: 'Top'
+                      front: 'Front View',
+                      back: 'Back View',
+                      side: 'Side View',
+                      top: 'Top View'
                     };
-
+                    
                     if (viewType === 'side' && Array.isArray(upload)) {
-                      return upload.map((sideUpload, idx) => (
-                        <TableRow key={`${viewType}-${idx}`}>
+                      return upload.map((sideUpload, index) => (
+                        <TableRow key={`${viewType}-${index}`}>
                           <TableCell className="font-medium">
-                            {viewLabels[viewType as keyof typeof viewLabels]} #{idx + 1}
+                            {viewLabels[viewType as keyof typeof viewLabels]} #{index + 1}
                           </TableCell>
                           <TableCell>
                             <img
@@ -340,25 +244,8 @@ const Index = () => {
                               className="w-16 h-16 object-cover rounded border"
                             />
                           </TableCell>
-                          <TableCell>
-                            {sideUpload.validation.analysis?.make || "Analyzing..."}
-                          </TableCell>
-                          <TableCell>
-                            {sideUpload.validation.analysis?.model || "Analyzing..."}
-                          </TableCell>
-                          <TableCell>
-                            {sideUpload.validation.analysis?.color || "Analyzing..."}
-                          </TableCell>
-                          <TableCell>
-                            {sideUpload.validation.analysis?.condition || "Analyzing..."}
-                          </TableCell>
-                          <TableCell>
-                            {sideUpload.validation.analysis?.damage || "Analyzing..."}
-                          </TableCell>
-                          <TableCell className="max-w-xs">
-                            <div className="line-clamp-2">
-                              {sideUpload.validation.analysis?.features || "Analyzing..."}
-                            </div>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {sideUpload.file.name}
                           </TableCell>
                           <TableCell>
                             {sideUpload.validation.isMatch ? (
@@ -373,10 +260,19 @@ const Index = () => {
                               </span>
                             )}
                           </TableCell>
+                          <TableCell>
+                            {sideUpload.validation.isMatch 
+                              ? "Correct side view"
+                              : sideUpload.validation.detectedView.replace('_', ' ')
+                            }
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {Math.round(sideUpload.validation.confidence * 100)}%
+                          </TableCell>
                         </TableRow>
                       ));
                     }
-
+                    
                     const singleUpload = upload as UploadedFile;
                     return (
                       <TableRow key={viewType}>
@@ -390,25 +286,8 @@ const Index = () => {
                             className="w-16 h-16 object-cover rounded border"
                           />
                         </TableCell>
-                        <TableCell>
-                          {singleUpload.validation.analysis?.make || "Analyzing..."}
-                        </TableCell>
-                        <TableCell>
-                          {singleUpload.validation.analysis?.model || "Analyzing..."}
-                        </TableCell>
-                        <TableCell>
-                          {singleUpload.validation.analysis?.color || "Analyzing..."}
-                        </TableCell>
-                        <TableCell>
-                          {singleUpload.validation.analysis?.condition || "Analyzing..."}
-                        </TableCell>
-                        <TableCell>
-                          {singleUpload.validation.analysis?.damage || "Analyzing..."}
-                        </TableCell>
-                        <TableCell className="max-w-xs">
-                          <div className="line-clamp-2">
-                            {singleUpload.validation.analysis?.features || "Analyzing..."}
-                          </div>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {singleUpload.file.name}
                         </TableCell>
                         <TableCell>
                           {singleUpload.validation.isMatch ? (
@@ -423,14 +302,33 @@ const Index = () => {
                             </span>
                           )}
                         </TableCell>
+                        <TableCell>
+                          {singleUpload.validation.isMatch 
+                            ? `Correct ${viewType.replace('_', ' ')} view`
+                            : singleUpload.validation.detectedView.replace('_', ' ')
+                          }
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {Math.round(singleUpload.validation.confidence * 100)}%
+                        </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
             </div>
+            
+            {allValidated && (
+              <div className="mt-6 pt-4 border-t border-border">
+                <Button size="lg" className="w-full">
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  Submit All Photos
+                </Button>
+              </div>
+            )}
           </Card>
         )}
+
       </div>
     </div>
   );
