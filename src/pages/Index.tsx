@@ -21,6 +21,12 @@ interface UploadedFile {
     expectedView: string;
     isMatch: boolean;
     confidence: number;
+    quality?: {
+      qualityScore: number;
+      isBlurry: boolean;
+      sharpness: string;
+      issues: string;
+    };
     analysis?: {
       make: string;
       model: string;
@@ -217,6 +223,7 @@ const Index = () => {
                     <TableHead>Filename</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Detected View</TableHead>
+                    <TableHead className="w-[100px]">Quality Score</TableHead>
                     <TableHead className="w-[100px] text-right">Confidence</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -232,48 +239,71 @@ const Index = () => {
                     };
                     
                     if (viewType === 'side' && Array.isArray(upload)) {
-                      return upload.map((sideUpload, index) => (
-                        <TableRow key={`${viewType}-${index}`}>
-                          <TableCell className="font-medium">
-                            {viewLabels[viewType as keyof typeof viewLabels]} #{index + 1}
-                          </TableCell>
-                          <TableCell>
-                            <img
-                              src={URL.createObjectURL(sideUpload.file)}
-                              alt={`${viewType} view`}
-                              className="w-16 h-16 object-cover rounded border"
-                            />
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {sideUpload.file.name}
-                          </TableCell>
-                          <TableCell>
-                            {sideUpload.validation.isMatch ? (
-                              <span className="inline-flex items-center gap-1 text-success font-medium">
-                                <CheckCircle className="w-4 h-4" />
-                                Valid
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-destructive font-medium">
-                                <AlertTriangle className="w-4 h-4" />
-                                Invalid
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {sideUpload.validation.isMatch 
-                              ? "Correct side view"
-                              : sideUpload.validation.detectedView.replace('_', ' ')
-                            }
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {Math.round(sideUpload.validation.confidence * 100)}%
-                          </TableCell>
-                        </TableRow>
-                      ));
+                      return upload.map((sideUpload, index) => {
+                        const qualityScore = sideUpload.validation.quality?.qualityScore ?? 0;
+                        const isLowQuality = qualityScore < 70;
+                        
+                        return (
+                          <TableRow key={`${viewType}-${index}`}>
+                            <TableCell className="font-medium">
+                              {viewLabels[viewType as keyof typeof viewLabels]} #{index + 1}
+                            </TableCell>
+                            <TableCell>
+                              <img
+                                src={URL.createObjectURL(sideUpload.file)}
+                                alt={`${viewType} view`}
+                                className="w-16 h-16 object-cover rounded border"
+                              />
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {sideUpload.file.name}
+                            </TableCell>
+                            <TableCell>
+                              {sideUpload.validation.isMatch ? (
+                                <span className="inline-flex items-center gap-1 text-success font-medium">
+                                  <CheckCircle className="w-4 h-4" />
+                                  Valid
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-destructive font-medium">
+                                  <AlertTriangle className="w-4 h-4" />
+                                  Invalid
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {sideUpload.validation.isMatch 
+                                ? "Correct side view"
+                                : sideUpload.validation.detectedView.replace('_', ' ')
+                              }
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                <span className={cn(
+                                  "font-medium",
+                                  isLowQuality ? "text-destructive" : "text-success"
+                                )}>
+                                  {qualityScore}/100
+                                </span>
+                                {isLowQuality && (
+                                  <span className="text-xs text-destructive">
+                                    Upload new image
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {Math.round(sideUpload.validation.confidence * 100)}%
+                            </TableCell>
+                          </TableRow>
+                        );
+                      });
                     }
                     
                     const singleUpload = upload as UploadedFile;
+                    const qualityScore = singleUpload.validation.quality?.qualityScore ?? 0;
+                    const isLowQuality = qualityScore < 70;
+                    
                     return (
                       <TableRow key={viewType}>
                         <TableCell className="font-medium">
@@ -307,6 +337,21 @@ const Index = () => {
                             ? `Correct ${viewType.replace('_', ' ')} view`
                             : singleUpload.validation.detectedView.replace('_', ' ')
                           }
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <span className={cn(
+                              "font-medium",
+                              isLowQuality ? "text-destructive" : "text-success"
+                            )}>
+                              {qualityScore}/100
+                            </span>
+                            {isLowQuality && (
+                              <span className="text-xs text-destructive">
+                                Upload new image
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {Math.round(singleUpload.validation.confidence * 100)}%

@@ -82,6 +82,79 @@ serve(async (req) => {
     const validateData = await validateResponse.json();
     const detectedView = validateData.choices[0]?.message?.content?.trim().toLowerCase();
     
+    // Analyze image quality
+    const qualityResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an image quality expert. Analyze the image quality and provide a score.
+            
+            Respond in the following JSON format:
+            {
+              "qualityScore": 85,
+              "isBlurry": false,
+              "sharpness": "High/Medium/Low",
+              "issues": "List any quality issues like blur, darkness, glare, etc."
+            }
+            
+            qualityScore should be 0-100 where:
+            - 90-100: Excellent quality, very sharp and clear
+            - 70-89: Good quality, acceptable sharpness
+            - 50-69: Fair quality, some blur or issues
+            - Below 50: Poor quality, blurry or significant issues`
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Analyze the quality of this image. Is it clear and sharp enough for vehicle inspection?'
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageBase64
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 200
+      }),
+    });
+
+    if (!qualityResponse.ok) {
+      const errorText = await qualityResponse.text();
+      console.error('OpenAI quality analysis error:', qualityResponse.status, errorText);
+      return new Response(
+        JSON.stringify({ error: 'Image quality analysis failed' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const qualityData = await qualityResponse.json();
+    const qualityContent = qualityData.choices[0]?.message?.content?.trim();
+    
+    let qualityResult;
+    try {
+      qualityResult = JSON.parse(qualityContent);
+    } catch (e) {
+      console.error('Failed to parse quality JSON:', qualityContent);
+      qualityResult = {
+        qualityScore: 50,
+        isBlurry: true,
+        sharpness: "Unknown",
+        issues: "Could not analyze quality"
+      };
+    }
+
     // Then, perform detailed image analysis
     const analysisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -166,7 +239,8 @@ serve(async (req) => {
         expectedView: expectedView.toLowerCase(),
         isMatch,
         confidence: detectedView === 'unknown' ? 0 : (isMatch ? 0.95 : 0.85),
-        analysis: analysisResult
+        analysis: analysisResult,
+        quality: qualityResult
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
