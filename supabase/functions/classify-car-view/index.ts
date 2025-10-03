@@ -94,21 +94,29 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an image quality expert. Analyze the image quality and provide a score.
+            content: `You are an automotive image quality expert specializing in vehicle inspection photos.
             
-            Respond in the following JSON format:
+            Analyze the image for:
+            1. Motion blur or camera shake - Check if car edges, text, or details are blurred from movement
+            2. Focus quality - Is the car in sharp focus?
+            3. Clarity - Are fine details like badges, trim, and body lines clearly visible?
+            4. Overall suitability for vehicle damage inspection
+            
+            Respond ONLY with valid JSON (no markdown, no code blocks):
             {
               "qualityScore": 85,
               "isBlurry": false,
               "sharpness": "High/Medium/Low",
-              "issues": "List any quality issues like blur, darkness, glare, etc."
+              "issues": "Specific issues found"
             }
             
-            qualityScore should be 0-100 where:
-            - 90-100: Excellent quality, very sharp and clear
-            - 70-89: Good quality, acceptable sharpness
-            - 50-69: Fair quality, some blur or issues
-            - Below 50: Poor quality, blurry or significant issues`
+            Quality scoring guidelines:
+            - 85-100: Excellent - Sharp, clear, no blur, suitable for detailed inspection
+            - 70-84: Good - Minor softness but details visible, acceptable for inspection
+            - 50-69: Fair - Noticeable blur or shake, some details unclear, marginal for inspection
+            - Below 50: Poor - Significant blur/shake/motion, not suitable for inspection
+            
+            Be strict: If there's any motion blur, camera shake, or the car isn't in sharp focus, score below 70.`
           },
           {
             role: 'user',
@@ -140,7 +148,10 @@ serve(async (req) => {
     }
 
     const qualityData = await qualityResponse.json();
-    const qualityContent = qualityData.choices[0]?.message?.content?.trim();
+    let qualityContent = qualityData.choices[0]?.message?.content?.trim();
+    
+    // Remove markdown code blocks if present
+    qualityContent = qualityContent.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     
     let qualityResult;
     try {
@@ -150,7 +161,7 @@ serve(async (req) => {
       qualityResult = {
         qualityScore: 50,
         isBlurry: true,
-        sharpness: "Unknown",
+        sharpness: "Low",
         issues: "Could not analyze quality"
       };
     }
@@ -211,7 +222,10 @@ serve(async (req) => {
     }
 
     const analysisData = await analysisResponse.json();
-    const analysisContent = analysisData.choices[0]?.message?.content?.trim();
+    let analysisContent = analysisData.choices[0]?.message?.content?.trim();
+    
+    // Remove markdown code blocks if present
+    analysisContent = analysisContent.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     
     let analysisResult;
     try {
